@@ -1,0 +1,6 @@
+---
+- name: Install zabbix DB
+  hosts: all
+  become: yes
+  roles:
+    - set_mariadb

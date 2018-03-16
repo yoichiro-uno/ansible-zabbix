@@ -1,0 +1,10 @@
+zabbix_server_DBType: 'MYSQL'
+zabbix_server_DBHost: 'localhost'
+zabbix_server_DBPort: '0'
+zabbix_server_DBName: 'zabbix'
+zabbix_server_DBUser: 'zabbix'
+zabbix_server_DBPassword: zabbix
+zabbix_server: 'localhost'
+zabbix_server_Port: '10050'
+zabbix_server_Name: ''
+zabbix_server_mysql_ver: '3.0.9'

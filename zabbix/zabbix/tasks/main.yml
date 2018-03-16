@@ -1,0 +1,100 @@
+---
+- name: Add Zabbix Repository
+  yum_repository:
+    name: "zabbix-{{ zabbix_version }}"
+    description: "Zabbix repository for {{ zabbix_version }} packages"
+    baseurl: "https://repo.zabbix.com/zabbix/{{ zabbix_version }}/rhel/{{ansible_distribution_major_version}}}/x86_64/""
+    gpgcheck: no
+    enabled: yes
+
+- name: Install Zabbix
+  yum: name={{item}}
+  with_items:
+    - zabbix-server-mysql
+    - zabbix-web-mysql
+    - zabbix-web-japanese
+    - zabbix-agent
+
+- name: create Share directory
+  file:
+    path: ~/share
+    state: directory
+    owner: root
+    group: root
+    mode: 0644
+
+- name: Get create.sql.gz Path
+  find:
+    paths: /usr/share/doc
+    recurse: yes
+    patterns: 'create.sql.gz'
+  register: _createsql_path
+
+- name: Copy file to share folder
+  copy:
+    src: "{{_createsql_path}}"
+    dest: ~/share/
+    remote_src: true
+
+- name: Configure zabbix server
+  lineinfile:
+    dest: "/etc/zabbix/zabbix_server.conf"
+    line: "{{item}}"
+    backup: yes
+  register: need_zabbix_restart
+  with_items:
+    - "DBPassword = {{ zabbix_server_DBPassword }}"
+
+- name: Configure Zabbix Web Interface
+  lineinfile:
+    dest=/etc/httpd/conf.d/zabbix.conf
+    line={{item}}
+    backup=yes
+  register: need_zabbix_restart
+  with_items:
+    - 'php_value date.timezone Asia/Tokyo'
+
+- name: Put zabbix.conf.php
+  template:
+    src: zabbix.conf.php.j2
+    dest: /etc/zabbix/web/zabbix.conf.php
+    owner: zabbix
+    group: zabbix
+    mode: 0644
+  register: need_zabbix_restart
+
+- name: Start Zabbix Server
+  service:
+    name: zabbix-server
+    state: started
+    enabled: yes
+
+- name: Start Zabbix Agent
+  service:
+    name: zabbix-agent
+    state: started
+    enabled: yes
+
+- name: Start Zabbix webserver
+  service:
+    name: httpd
+    state: started
+    enabled: yes
+
+- name: reStart Zabbix Server
+  service:
+    name: zabbix-server
+    state: restarted
+  when: need_zabbix_restart.changed
+
+- name: reStart Zabbix Agent
+  service:
+    name: zabbix-agent
+    state: restarted
+  when: need_zabbix_restart.changed
+
+  - name: reStart Zabbix webserver
+  service:
+    name: httpd
+    state: restarted
+  when: need_zabbix_restart.changed

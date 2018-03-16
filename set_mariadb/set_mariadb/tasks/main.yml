@@ -1,0 +1,49 @@
+---
+- name: Configure mariaDB
+  blockinfile:
+    dest: /etc/my.cnf.d/server.cnf
+    insertafter: "[mysqld]"
+    content:
+      character-set-server = utf8
+      collation-server     = utf8_bin
+      skip-character-set-client-handshake
+      innodb_file_per_tabl
+  register: need_restart
+
+- name: Restart MariaDB
+  service:
+    name=mariadb
+    state=restarted
+  when: need_restart.changed
+
+- name: Create Zabbix Database
+  mysql_db:
+    name: "{{ zabbix_server_DBName }}"
+    state: present
+
+- name: Create Zabbix DB User
+  mysql_user:
+    name: "{{ zabbix_server_DBUser }}"
+    password: "{{ zabbix_server_DBPassword }}"
+    priv: "{{zabbix_server_DBName}}.*:ALL"
+    host: localhost
+    state: present
+
+- name: Check Zabbix Table existance
+  shell: mysqlshow -u zabbix -pzabbix zabbix | wc -l
+  register: zabbix_table_exist
+  failed_when: zabbix_table_exist.rc not in [0, 1]
+  changed_when: False
+
+- debug: var=zabbix_table_exist.stdout
+  when: zabbix_table_exist | success
+
+
+  - name: Create Zabbix Table and schema
+  mysql_db:
+    name: "{{ zabbix_server_DBName }}"
+    state: import
+#    target: /usr/share/doc/zabbix-server-mysql-{{zabbix_server_mysql_ver}}/create.sql.gz
+    target: "{{item.path}}"
+  when: zabbix_table_exist.stdout == "5"
+  with_items: "{{_createsql_path.files}}"
