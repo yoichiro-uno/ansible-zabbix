@@ -43,7 +43,6 @@
   mysql_db:
     name: "{{ zabbix_server_DBName }}"
     state: import
-#    target: /usr/share/doc/zabbix-server-mysql-{{zabbix_server_mysql_ver}}/create.sql.gz
     target: "{{item.path}}"
   when: zabbix_table_exist.stdout == "5"
   with_items: "{{_createsql_path.files}}"
